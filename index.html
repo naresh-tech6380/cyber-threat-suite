@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Cyber Threat Suite — Rule-Based Threat Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#eef0ea; --bg2:#e4e7de; --panel:#ffffff; --panel2:#f6f7f2; --line:#d4d9cd;
+    --ink:#131712; --muted:#5a665b; --faint:#85907f;
+    --accent:#0d7a5f; --accent-ink:#ffffff; --accent-soft:#e1f2eb;
+    --clean:#1a7f4b; --clean-bg:#e2f3e7; --clean-line:#a9d8ba;
+    --susp:#9a6700; --susp-bg:#fdf0d3; --susp-line:#ecd28a;
+    --mal:#b42318; --mal-bg:#fde8e5; --mal-line:#f2aca4;
+    --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans:'IBM Plex Sans', system-ui, -apple-system, Segoe UI, sans-serif;
+    --shadow:0 1px 2px rgba(20,30,20,.06), 0 8px 24px rgba(20,30,20,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0a0e0b; --bg2:#0d120e; --panel:#121712; --panel2:#171e17; --line:#263026;
+      --ink:#e8ede6; --muted:#9aa89b; --faint:#6d7c6e;
+      --accent:#2fbf8f; --accent-ink:#06120d; --accent-soft:#143327;
+      --clean:#4cc47e; --clean-bg:#12291b; --clean-line:#245c39;
+      --susp:#e8b93e; --susp-bg:#2b2210; --susp-line:#5c4a1a;
+      --mal:#ff7a6e; --mal-bg:#301512; --mal-line:#6b2a24;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent)}
+  button{font-family:inherit;cursor:pointer}
+  input,textarea,select{font-family:inherit}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 56px}
+
+  /* Header */
+  header.top{border-bottom:1px solid var(--line);background:var(--bg2)}
+  .top-in{max-width:1180px;margin:0 auto;padding:26px 20px 22px;display:flex;gap:20px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+  .brand h1{font-size:30px;line-height:1.05;margin:0;letter-spacing:-.02em;font-weight:700}
+  .brand h1 span{color:var(--accent)}
+  .brand p{margin:8px 0 0;color:var(--muted);max-width:560px;font-size:15px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .badge{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);background:var(--panel);padding:7px 10px;border-radius:999px;color:var(--muted);white-space:nowrap}
+  .badge strong{color:var(--ink)}
+  .badge.noai{border-color:var(--clean-line);background:var(--clean-bg);color:var(--clean)}
+  .badge.noai strong{color:var(--clean)}
+
+  .note{margin:18px 0 0;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:13px 16px;display:flex;gap:12px;align-items:flex-start;box-shadow:var(--shadow)}
+  .note .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;margin-top:7px}
+  .note p{margin:0;font-size:14px;color:var(--muted)}
+  .note p strong{color:var(--ink)}
+
+  /* Layout */
+  .grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:18px;margin-top:18px;align-items:start}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+  .card-h{padding:16px 18px 0}
+  .card-h h2{margin:0;font-size:17px;letter-spacing:-.01em}
+  .card-h p{margin:4px 0 0;color:var(--muted);font-size:13.5px}
+  .card-b{padding:16px 18px 18px}
+
+  /* Tabs */
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;padding:14px 18px 0}
+  .tab{border:1px solid var(--line);background:var(--panel2);color:var(--muted);padding:9px 13px;border-radius:8px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .tab .n{font-family:var(--mono);font-size:11px;width:19px;height:19px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;background:var(--panel)}
+  .tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .tab[aria-selected="true"] .n{border-color:transparent;background:var(--accent);color:var(--accent-ink)}
+  @media (prefers-color-scheme: dark){.tab[aria-selected="true"]{background:var(--ink);color:#0a0e0b}}
+
+  .pane{display:none}
+  .pane.active{display:block}
+  label.fl{display:block;font-size:12px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:0 0 7px}
+  .field{width:100%;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:8px;padding:12px 13px;font-size:15px}
+  .field.mono{font-family:var(--mono);font-size:13.5px}
+  textarea.field{resize:vertical;min-height:190px;line-height:1.5}
+  .field::placeholder{color:var(--faint)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .samples{margin-top:10px}
+  .samples span{font-size:12px;color:var(--faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+  .chip{border:1px dashed var(--line);background:transparent;color:var(--muted);padding:6px 10px;border-radius:999px;font-size:12.5px;font-family:var(--mono)}
+  .chip:hover{border-color:var(--accent);color:var(--accent)}
+  .btn{border:0;border-radius:8px;padding:12px 18px;font-weight:700;font-size:14.5px}
+  .btn-primary{background:var(--accent);color:var(--accent-ink)}
+  .btn-primary:hover{filter:brightness(1.07)}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+  .hint{font-size:12.5px;color:var(--faint);margin-top:10px}
+  .hint code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);padding:1px 5px;border-radius:4px;font-size:11.5px}
+
+  .dropzone{border:1.5px dashed var(--line);background:var(--panel2);border-radius:10px;padding:16px 14px;text-align:center;transition:border-color .15s ease, background .15s ease;margin-bottom:14px}
+  .dropzone.dragover{border-color:var(--accent);background:var(--accent-soft)}
+  .dropzone .dz-title{font-weight:700;font-size:14.5px;margin:0}
+  .dropzone .dz-sub{font-size:12.5px;color:var(--muted);margin:4px 0 0}
+  .dropzone .dz-sub code{font-family:var(--mono);font-size:11.5px;background:var(--panel);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+  .file-meta{display:none;margin:0 0 12px;border:1px solid var(--clean-line);background:var(--clean-bg);border-radius:8px;padding:10px 12px;font-size:13px;gap:8px;align-items:flex-start}
+  .file-meta.show{display:flex}
+  .file-meta .fm-name{font-family:var(--mono);font-size:12.5px;word-break:break-all;color:var(--ink);font-weight:600}
+  .file-meta .fm-detail{color:var(--muted);font-size:12.5px}
+  .vtbox{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+  .vtbox p{margin:6px 0 0;font-size:12.5px;color:var(--faint)}
+
+  /* Results */
+  .empty{padding:28px 18px;text-align:center;color:var(--faint)}
+  .empty .big{font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+  .empty p{font-size:14px;max-width:340px;margin:8px auto 0}
+  .verdict{display:flex;gap:14px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .v-badge{font-family:var(--mono);font-weight:600;font-size:15px;letter-spacing:.06em;text-transform:uppercase;padding:9px 14px;border-radius:8px;border:1px solid;white-space:nowrap}
+  .v-clean{color:var(--clean);background:var(--clean-bg);border-color:var(--clean-line)}
+  .v-suspicious{color:var(--susp);background:var(--susp-bg);border-color:var(--susp-line)}
+  .v-malicious{color:var(--mal);background:var(--mal-bg);border-color:var(--mal-line)}
+  .verdict-meta{min-width:0}
+  .verdict-meta .target{font-family:var(--mono);font-size:13px;word-break:break-all;color:var(--ink)}
+  .verdict-meta .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .score{margin-left:auto;text-align:right;flex:none}
+  .score .num{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1}
+  .score .lbl{font-size:11px;color:var(--faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-top:3px}
+  .meter{height:7px;border-radius:99px;background:var(--panel2);overflow:hidden;margin:14px 18px 0;border:1px solid var(--line)}
+  .meter i{display:block;height:100%;transition:width .4s ease}
+  .meter .f-clean{background:var(--clean)} .meter .f-suspicious{background:var(--susp)} .meter .f-malicious{background:var(--mal)}
+  .findings{padding:8px 18px 6px}
+  .finding{border-top:1px solid var(--line);padding:12px 0}
+  .finding:first-child{border-top:0}
+  .finding-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .sev{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;padding:3px 7px;border-radius:5px;border:1px solid}
+  .finding h3{margin:0;font-size:14.5px}
+  .finding p{margin:5px 0 0;font-size:13.5px;color:var(--muted)}
+  .finding p code, .rule code{font-family:var(--mono);font-size:12px;background:var(--panel2);border:1px solid var(--line);padding:1px 5px;border-radius:4px;word-break:break-all}
+  .mitre{margin-left:auto;font-family:var(--mono);font-size:11.5px;border:1px solid var(--line);background:var(--panel2);padding:4px 8px;border-radius:6px;color:var(--ink);white-space:nowrap}
+  .mitre b{color:var(--accent)}
+  .rule{font-size:12.5px;color:var(--faint);margin-top:6px}
+  .result-foot{padding:12px 18px 16px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line)}
+
+  /* Session / history */
+  .sess-list{list-style:none;margin:0;padding:0}
+  .sess-list li{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px}
+  .sess-list li:first-child{border-top:0;padding-top:2px}
+  .sess-list .t{font-family:var(--mono);font-size:11px;color:var(--faint);flex:none}
+  .sess-list .what{font-family:var(--mono);font-size:12.5px;word-break:break-all;min-width:0}
+  .sess-list .v{margin-left:auto;flex:none}
+  .pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid}
+  .sess-empty{color:var(--faint);font-size:13.5px;padding:4px 0 2px}
+
+  /* Bottom sections */
+  .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:18px}
+  @media (max-width:900px){.cols{grid-template-columns:1fr}}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 6px;border-top:1px solid var(--line);vertical-align:top}
+  th{border-top:0;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:500}
+  td.mono, .mono-cell{font-family:var(--mono);font-size:12px;word-break:break-all}
+  .scroll-x{overflow-x:auto}
+  footer{margin-top:28px;color:var(--faint);font-size:13px;text-align:center}
+  footer .mono{font-family:var(--mono);font-size:12px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  @media (max-width:560px){
+    .brand h1{font-size:25px}
+    .verdict{flex-wrap:wrap}
+    .score{margin-left:0;text-align:left}
+  }
+  @media (prefers-reduced-motion: reduce){.meter i{transition:none} html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <h1>Cyber Threat <span>Suite</span></h1>
+      <p>A SOC-style analyzer for IPs, domains, file hashes and Windows logs. Paste an indicator, get a verdict, a MITRE ATT&amp;CK mapping and a report — the way an analyst works, with fixed rules only.</p>
+    </div>
+    <div class="badges">
+      <span class="badge noai"><strong>No AI / ML</strong>&nbsp;· Rule-based only</span>
+      <span class="badge">Verdicts: <strong>Clean · Suspicious · Malicious</strong></span>
+      <span class="badge">Runs <strong>100% in your browser</strong></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="note" role="note">
+    <span class="dot" aria-hidden="true"></span>
+    <p><strong>How this works:</strong> every verdict below comes from plain if–else rules — a local IOC (indicator of compromise) list, VirusTotal-style detection-count thresholds, and pattern checks. Nothing is predicted, trained or guessed by a model, and nothing you paste leaves this page.</p>
+  </div>
+
+  <div class="grid">
+    <!-- ============ ANALYZER ============ -->
+    <section class="card" aria-labelledby="analyzer-h">
+      <div class="card-h">
+        <h2 id="analyzer-h">Analyze an indicator</h2>
+        <p>Pick a tool, paste a value or load a safe lab sample, then run the analysis.</p>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Analyzer tools">
+        <button class="tab" role="tab" aria-selected="true" data-tab="ip"><span class="n">1</span>IP Address</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="domain"><span class="n">2</span>Domain / URL</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="hash"><span class="n">3</span>File Hash</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="log"><span class="n">4</span>Windows Log</button>
+      </div>
+
+      <div class="card-b">
+        <!-- IP -->
+        <div class="pane active" id="pane-ip" role="tabpanel">
+          <label class="fl" for="ip-input">IP address</label>
+          <input class="field mono" id="ip-input" inputmode="text" autocomplete="off" spellcheck="false" placeholder="e.g. 203.0.113.45" />
+          <div class="row samples">
+            <span>Lab samples:</span>
+            <button class="chip" data-sample="ip" data-value="8.8.8.8">8.8.8.8 · public DNS</button>
+            <button class="chip" data-sample="ip" data-value="203.0.113.45">203.0.113.45 · test-net</button>
+            <button class="chip" data-sample="ip" data-value="198.51.100.99">198.51.100.99 · in IOC list</button>
+            <button class="chip" data-sample="ip" data-value="192.168.1.10">192.168.1.10 · private</button>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="run-ip">Analyze IP</button>
+            <button class="btn btn-ghost" data-clear="ip-input">Clear</button>
+          </div>
+          <p class="hint">Rules: exact match in the local IOC list → <code>Malicious</code>. Reserved TEST-NET ranges (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24) used as live destinations → <code>Suspicious</code>. Private / loopback → <code>Clean</code> (internal). Anything else with no flags → <code>Clean</code>, 0 detections.</p>
+        </div>
+
+        <!-- Domain / URL -->
+        <div class="pane" id="pane-domain" role="tabpanel">
+          <label class="fl" for="domain-input">Domain or full URL</label>
+          <input class="field mono" id="domain-input" inputmode="url" autocomplete="off" spellcheck="false" placeholder="e.g. https://login-verify-secure.example/signin" />
+          <div class="row samples">
+            <span>Lab samples:</span>
+            <button class="chip" data-sample="domain" data-value="https://www.google.com">google.com · clean</button>
+            <button class="chip" data-sample="domain" data-value="http://login-verify-secure.example/signin">phishing-style URL</button>
+            <button class="chip" data-sample="domain" data-value="http://185.220.101.47/payload/update">IP-as-host URL</button>
+            <button class="chip" data-sample="domain" data-value="evil-c2.example">evil-c2.example · in IOC list</button>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="run-domain">Analyze domain / URL</button>
+            <button class="btn btn-ghost" data-clear="domain-input">Clear</button>
+          </div>
+          <p class="hint">Rules: IOC-list domain → <code>Malicious</code>. Phishing keywords (<code>login-verify</code>, <code>secure-update</code>, <code>free-prize</code>…), an IP used as the host, punycode (<code>xn--</code>), an <code>@</code> in the URL, or a plain-<code>http</code> login page each add detections. 10+ detections → Malicious, 1–9 → Suspicious, 0 → Clean.</p>
+        </div>
+
+        <!-- Hash -->
+        <div class="pane" id="pane-hash" role="tabpanel">
+          <label class="fl" for="hash-input">MD5 (32 chars) or SHA-256 (64 chars)</label>
+          <input class="field mono" id="hash-input" autocomplete="off" spellcheck="false" placeholder="e.g. 275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f" />
+          <div class="row samples">
+            <span>Lab samples:</span>
+            <button class="chip" data-sample="hash" data-value="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855">empty-file SHA-256</button>
+            <button class="chip" data-sample="hash" data-value="275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f">EICAR test file</button>
+            <button class="chip" data-sample="hash" data-value="44d88612fea8a8f36de82e1278abb02f">EICAR MD5</button>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="run-hash">Analyze hash</button>
+            <button class="btn btn-ghost" data-clear="hash-input">Clear</button>
+          </div>
+          <p class="hint">Rules: hash in the local known-malware list → <code>Malicious</code> with a VirusTotal-style detection count. The EICAR string is the industry-standard <em>test</em> file — not real malware — used to prove hash matching works. A valid hash with no record → <code>Clean</code>, 0 detections.</p>
+        </div>
+
+        <!-- Log -->
+        <div class="pane" id="pane-log" role="tabpanel">
+          <div class="dropzone" id="log-dropzone" tabindex="0" role="button" aria-label="Upload a log file by clicking or dragging and dropping">
+            <p class="dz-title">Upload a log file</p>
+            <p class="dz-sub">Drag &amp; drop a <code>.txt</code>, <code>.log</code> or <code>.csv</code> file here, or</p>
+            <div class="actions" style="justify-content:center;margin-top:10px">
+              <button type="button" class="btn btn-primary" id="log-file-btn">Choose log file</button>
+            </div>
+            <p class="dz-sub" style="margin-top:10px">The file is read locally in your browser only — it is never sent to any server.</p>
+            <input type="file" id="log-file-input" accept=".txt,.log,.csv,text/plain,text/csv" class="sr" aria-label="Choose a .txt, .log or .csv log file" />
+          </div>
+          <div class="file-meta" id="log-file-meta" role="status" aria-live="polite">
+            <span aria-hidden="true" style="flex:none;margin-top:1px">✓</span>
+            <div style="min-width:0">
+              <div class="fm-name" id="log-file-name"></div>
+              <div class="fm-detail" id="log-file-detail"></div>
+            </div>
+          </div>
+          <label class="fl" for="log-input">Or paste Windows Event Log / Sysmon text</label>
+          <textarea class="field mono" id="log-input" spellcheck="false" placeholder="Paste exported event text here — lines containing Event IDs like 4625, 4624, 4672, 4732, Sysmon EventCode 1 / 3, process names and command lines. Uploading a file above fills this area with its contents."></textarea>
+          <div class="row samples">
+            <span>Lab samples:</span>
+            <button class="chip" id="sample-log-attack">Full attack sequence</button>
+            <button class="chip" id="sample-log-clean">Normal morning activity</button>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="run-log">Analyze log</button>
+            <button class="btn btn-ghost" data-clear="log-input">Clear</button>
+          </div>
+          <p class="hint">Detections: failed logons (<code>4625</code>), brute force — <code>5+ failures inside 5 minutes</code> when timestamps are present, otherwise 10+ total failures — success after failures (<code>4624</code>), suspicious PowerShell (<code>-EncodedCommand</code>, <code>Bypass</code>, <code>DownloadString</code>, <code>IEX</code>), new process creation (<code>4688</code> / Sysmon <code>1</code>), unusual ports (Sysmon <code>3</code>), and privilege escalation (<code>4672</code>, <code>4732</code>, <code>net localgroup administrators … /add</code>).</p>
+        </div>
+
+        <!-- VT key -->
+        <div class="vtbox">
+          <label class="fl" for="vt-key">VirusTotal API key — optional, demo only</label>
+          <input class="field mono" id="vt-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste a key to show it on your report header" />
+          <p>The key is <strong>never stored, never sent anywhere</strong> and is not needed for analysis — all checks on this page are local. In a real SOC you would paste the same indicator into VirusTotal to confirm the local verdict; if you enter a key here, the report simply notes that a key was supplied (shown masked).</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RESULTS ============ -->
+    <div>
+      <section class="card" aria-labelledby="result-h">
+        <h2 id="result-h" class="sr">Analysis result</h2>
+        <div id="result-area">
+          <div class="empty">
+            <div class="big">No analysis yet</div>
+            <p>Run any of the four analyzers and the verdict, the exact rule that fired, and its MITRE ATT&amp;CK technique will appear here.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:18px" aria-labelledby="sess-h">
+        <div class="card-h">
+          <h2 id="sess-h">Session findings &amp; report</h2>
+          <p>Every analysis in this session is listed here and included in the downloaded report.</p>
+        </div>
+        <div class="card-b">
+          <div id="sess-empty" class="sess-empty">Nothing analyzed yet in this session.</div>
+          <ul class="sess-list" id="sess-list"></ul>
+          <div class="actions" style="margin-top:16px">
+            <button class="btn btn-primary" id="download-report" disabled>Download report (.txt)</button>
+            <button class="btn btn-ghost" id="clear-session" disabled>Clear session</button>
+          </div>
+          <p class="hint">The report contains the indicator, verdict, detection count, every finding with its rule and MITRE technique, and a recommended response for each — ready to attach to a project submission.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ REFERENCE ============ -->
+  <div class="cols">
+    <section class="card" aria-labelledby="rules-h">
+      <div class="card-h"><h2 id="rules-h">The verdict rules</h2><p>Fixed thresholds. Same input always gives the same verdict.</p></div>
+      <div class="card-b">
+        <div class="scroll-x">
+        <table>
+          <thead><tr><th>Detections</th><th>Verdict</th><th>Analyst action</th></tr></thead>
+          <tbody>
+            <tr><td class="mono-cell">0 / 70</td><td><span class="pill v-clean">Clean</span></td><td>No action. Log and close.</td></tr>
+            <tr><td class="mono-cell">1 – 9 / 70</td><td><span class="pill v-suspicious">Suspicious</span></td><td>Investigate context: who, when, parent process.</td></tr>
+            <tr><td class="mono-cell">10+ / 70</td><td><span class="pill v-malicious">Malicious</span></td><td>Contain: block IOC, isolate host, open incident.</td></tr>
+            <tr><td class="mono-cell">IOC list match</td><td><span class="pill v-malicious">Malicious</span></td><td>Overrides the count — treated as known-bad.</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="hint">Detection counts on this page are simulated in the VirusTotal style (engines flagging the indicator out of 70) so the threshold logic can be demonstrated offline, in class, with safe lab indicators only.</p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="ioc-h">
+      <div class="card-h"><h2 id="ioc-h">Local IOC list</h2><p>The built-in blocklist the analyzers match against. Documentation / TEST-NET addresses only — safe for a lab.</p></div>
+      <div class="card-b">
+        <div class="scroll-x">
+        <table>
+          <thead><tr><th>Indicator</th><th>Type</th><th>Why listed</th></tr></thead>
+          <tbody>
+            <tr><td class="mono-cell">198.51.100.99</td><td>IP</td><td>Lab C2 placeholder</td></tr>
+            <tr><td class="mono-cell">203.0.113.200</td><td>IP</td><td>Lab scanner placeholder</td></tr>
+            <tr><td class="mono-cell">evil-c2.example</td><td>Domain</td><td>Command-and-control (lab)</td></tr>
+            <tr><td class="mono-cell">malware-drop.example</td><td>Domain</td><td>Payload host (lab)</td></tr>
+            <tr><td class="mono-cell">275a021b…51fd0f</td><td>SHA-256</td><td>EICAR test file</td></tr>
+            <tr><td class="mono-cell">44d88612…abb02f</td><td>MD5</td><td>EICAR test file</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="hint">In a real SOC this list is a Splunk lookup (<code style="font-family:var(--mono)">ioc_list.csv</code>) fed by threat-intel feeds. Here it is a short fixed list in the page, so the matching logic stays visible and auditable.</p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="mitre-h">
+      <div class="card-h"><h2 id="mitre-h">MITRE ATT&amp;CK quick map</h2><p>Techniques this suite reports, and where each one fires.</p></div>
+      <div class="card-b">
+        <div class="scroll-x">
+        <table>
+          <thead><tr><th>Technique</th><th>Name</th><th>Fires on</th></tr></thead>
+          <tbody>
+            <tr><td class="mono-cell">T1110.001</td><td>Brute Force: Password Guessing</td><td>5+ failed logons in 5 min</td></tr>
+            <tr><td class="mono-cell">T1078</td><td>Valid Accounts</td><td>Success after multiple failures</td></tr>
+            <tr><td class="mono-cell">T1059.001</td><td>PowerShell</td><td>Encoded / bypass PowerShell</td></tr>
+            <tr><td class="mono-cell">T1059.003</td><td>Windows Command Shell</td><td>cmd recon commands</td></tr>
+            <tr><td class="mono-cell">T1098</td><td>Account Manipulation</td><td>User added to Administrators</td></tr>
+            <tr><td class="mono-cell">T1071 / T1095</td><td>C2 protocols</td><td>Unusual port / known-bad IP</td></tr>
+            <tr><td class="mono-cell">T1204.002</td><td>User Execution: Malicious File</td><td>Known-bad file hash</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <p>Cyber Threat Suite — rule-based threat analysis for a Cyber Threat Intelligence / SOC lab project.<br />
+    <span class="mono">No AI · No ML · No model · No prediction — matching, thresholds and investigation only.</span></p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Local IOC list (lab-safe: documentation ranges & .example domains) ---------- */
+  var IOC_IPS = {
+    "198.51.100.99": "Lab C2 placeholder — listed in ioc_list",
+    "203.0.113.200": "Lab scanner placeholder — listed in ioc_list"
+  };
+  var IOC_DOMAINS = {
+    "evil-c2.example": "Command-and-control domain (lab placeholder)",
+    "malware-drop.example": "Payload hosting domain (lab placeholder)",
+    "phish-kit.example": "Phishing kit domain (lab placeholder)"
+  };
+  var IOC_HASHES = {
+    "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f": { name:"EICAR-STANDARD-ANTIVIRUS-TEST-FILE", detections:62, type:"SHA-256" },
+    "44d88612fea8a8f36de82e1278abb02f": { name:"EICAR-STANDARD-ANTIVIRUS-TEST-FILE", detections:58, type:"MD5" },
+    "7d15b3165aa4398ecb360c9fb1bcc811d722b2596d43d63cf2081b11610b99cb": { name:"Lab sample dropper (placeholder hash)", detections:41, type:"SHA-256" }
+  };
+  var KNOWN_CLEAN_HASHES = {
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": "Empty file (0 bytes) — well-known SHA-256",
+    "d41d8cd98f00b204e9800998ecf8427e": "Empty file (0 bytes) — well-known MD5"
+  };
+  var PHISH_KEYWORDS = ["login-verify","verify-login","secure-update","account-verify","free-prize","wallet-connect","signin-secure","password-reset-now","confirm-identity"];
+  var SHORTENERS = ["bit.ly","tinyurl.com","t.co","goo.gl","rb.gy","cutt.ly"];
+
+  var session = []; // {time, tool, target, verdict, detections, findings:[...]}
+
+  /* ---------- Helpers ---------- */
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function nowTime(){ var d=new Date(); return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+  function verdictFromDetections(d, iocHit){
+    if (iocHit || d >= 10) return "Malicious";
+    if (d >= 1) return "Suspicious";
+    return "Clean";
+  }
+  function finding(title, detail, severity, mitreId, mitreName, rule, response){
+    return { title:title, detail:detail, severity:severity, mitreId:mitreId, mitreName:mitreName, rule:rule, response:response };
+  }
+
+  function renderResult(toolLabel, target, verdict, detections, findings, note){
+    var cls = verdict.toLowerCase();
+    var pct = Math.min(100, Math.round(detections/70*100));
+    var html = '';
+    html += '<div class="verdict"><span class="v-badge v-'+cls+'">'+esc(verdict)+'</span>'
+      + '<div class="verdict-meta"><div class="target">'+esc(target)+'</div>'
+      + '<div class="sub">'+esc(toolLabel)+' · analyzed '+esc(nowTime())+' · local rules only</div></div>'
+      + '<div class="score"><div class="num">'+detections+'<span style="color:var(--faint);font-size:14px"> / 70</span></div><div class="lbl">Detections</div></div></div>';
+    html += '<div class="meter" aria-hidden="true"><i class="f-'+cls+'" style="width:'+Math.max(pct, detections>0?6:0)+'%"></i></div>';
+    html += '<div class="findings">';
+    if (findings.length === 0){
+      html += '<div class="finding"><div class="finding-top"><span class="sev v-clean">Info</span><h3>No rule fired</h3></div>'
+        + '<p>The indicator matched no IOC entry and tripped no pattern or threshold rule, so the verdict is Clean with 0 detections.</p></div>';
+    }
+    findings.forEach(function(f){
+      html += '<div class="finding"><div class="finding-top">'
+        + '<span class="sev v-'+f.severity.toLowerCase()+'">'+esc(f.severity)+'</span>'
+        + '<h3>'+esc(f.title)+'</h3>'
+        + (f.mitreId ? '<span class="mitre"><b>'+esc(f.mitreId)+'</b> '+esc(f.mitreName)+'</span>' : '')
+        + '</div><p>'+f.detail+'</p>'
+        + (f.rule ? '<p class="rule">Rule: <code>'+esc(f.rule)+'</code></p>' : '')
+        + (f.response ? '<p class="rule">Recommended response: '+esc(f.response)+'</p>' : '')
+        + '</div>';
+    });
+    html += '</div>';
+    if (note) html += '<div class="result-foot"><span class="hint" style="margin:0">'+esc(note)+'</span></div>';
+    $("result-area").innerHTML = html;
+    $("result-area").scrollIntoView({behavior:"smooth", block:"nearest"});
+  }
+
+  function logSession(toolLabel, target, verdict, detections, findings){
+    session.push({ time: nowTime(), tool: toolLabel, target: target, verdict: verdict, detections: detections, findings: findings });
+    renderSession();
+  }
+  function renderSession(){
+    var list = $("sess-list"); list.innerHTML = "";
+    $("sess-empty").style.display = session.length ? "none" : "block";
+    $("download-report").disabled = session.length === 0;
+    $("clear-session").disabled = session.length === 0;
+    session.slice().reverse().forEach(function(s){
+      var li = document.createElement("li");
+      li.innerHTML = '<span class="t">'+esc(s.time)+'</span><span class="what">'+esc(s.tool)+': '+esc(s.target)+'</span><span class="v"><span class="pill v-'+s.verdict.toLowerCase()+'">'+esc(s.verdict)+'</span></span>';
+      list.appendChild(li);
+    });
+  }
+
+  function fail(msg){
+    $("result-area").innerHTML = '<div class="verdict"><span class="v-badge v-suspicious">Check input</span><div class="verdict-meta"><div class="sub">'+esc(msg)+'</div></div></div>';
+  }
+
+  /* ---------- Tabs ---------- */
+  var tabs = document.querySelectorAll(".tab");
+  tabs.forEach(function(t){
+    t.addEventListener("click", function(){
+      tabs.forEach(function(x){ x.setAttribute("aria-selected","false"); });
+      t.setAttribute("aria-selected","true");
+      document.querySelectorAll(".pane").forEach(function(p){ p.classList.remove("active"); });
+      $("pane-"+t.getAttribute("data-tab")).classList.add("active");
+    });
+  });
+  function activateTab(name){
+    tabs.forEach(function(x){ x.setAttribute("aria-selected", x.getAttribute("data-tab")===name ? "true":"false"); });
+    document.querySelectorAll(".pane").forEach(function(p){ p.classList.remove("active"); });
+    $("pane-"+name).classList.add("active");
+  }
+
+  /* ---------- Samples & clear ---------- */
+  document.querySelectorAll("[data-sample]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var kind = b.getAttribute("data-sample");
+      $(kind+"-input").value = b.getAttribute("data-value");
+      $(kind+"-input").focus();
+    });
+  });
+  document.querySelectorAll("[data-clear]").forEach(function(b){
+    b.addEventListener("click", function(){ $(b.getAttribute("data-clear")).value = ""; });
+  });
+
+  var SAMPLE_LOG_ATTACK = [
+    "2026-10-26 09:02:11  Event ID 4625  Logon Type 3  Account Name: labtest  Source Network Address: 192.168.1.50  Failure Reason: Unknown user name or bad password",
+    "2026-10-26 09:02:40  Event ID 4625  Logon Type 3  Account Name: labtest  Source Network Address: 192.168.1.50  Failure Reason: Unknown user name or bad password",
+    "2026-10-26 09:03:05  Event ID 4625  Logon Type 3  Account Name: labtest  Source Network Address: 192.168.1.50  Failure Reason: Unknown user name or bad password",
+    "2026-10-26 09:03:31  Event ID 4625  Logon Type 3  Account Name: labtest  Source Network Address: 192.168.1.50  Failure Reason: Unknown user name or bad password",
+    "2026-10-26 09:04:02  Event ID 4625  Logon Type 3  Account Name: labtest  Source Network Address: 192.168.1.50  Failure Reason: Unknown user name or bad password",
+    "2026-10-26 09:04:44  Event ID 4625  Logon Type 3  Account Name: labtest  Source Network Address: 192.168.1.50  Failure Reason: Unknown user name or bad password",
+    "2026-10-26 09:05:10  Event ID 4624  Logon Type 3  Account Name: labtest  Source Network Address: 192.168.1.50  An account was successfully logged on",
+    "2026-10-26 09:05:12  Event ID 4672  Account Name: labtest  Special privileges assigned to new logon",
+    "2026-10-26 09:06:01  Sysmon EventCode 1  Image: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe  CommandLine: powershell -ExecutionPolicy Bypass -EncodedCommand aQBmACAAKAB3AGgAbwBhAG0AaQAgAC0A  ParentImage: C:\\Windows\\explorer.exe",
+    "2026-10-26 09:06:20  Event ID 4688  A new process has been created  New Process Name: C:\\Windows\\System32\\cmd.exe  CommandLine: cmd.exe /c whoami && net user",
+    "2026-10-26 09:07:03  Sysmon EventCode 3  Image: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe  DestinationIp: 198.51.100.99  DestinationPort: 4444",
+    "2026-10-26 09:08:15  CommandLine: net localgroup administrators labtest /add",
+    "2026-10-26 09:08:16  Event ID 4732  A member was added to a security-enabled local group  Group: Administrators  Member Name: labtest"
+  ].join("\n");
+
+  var SAMPLE_LOG_CLEAN = [
+    "2026-10-26 08:30:02  Event ID 4624  Logon Type 2  Account Name: naresh  An account was successfully logged on",
+    "2026-10-26 08:31:14  Event ID 4688  A new process has been created  New Process Name: C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "2026-10-26 08:32:40  Sysmon EventCode 1  Image: C:\\Windows\\explorer.exe  CommandLine: explorer.exe  ParentImage: C:\\Windows\\System32\\userinit.exe",
+    "2026-10-26 08:33:05  Sysmon EventCode 3  Image: C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe  DestinationIp: 142.250.77.14  DestinationPort: 443",
+    "2026-10-26 08:45:19  Event ID 4634  Account Name: naresh  An account was logged off"
+  ].join("\n");
+
+  var currentLogFileName = "";
+  function clearLogFileState(){
+    currentLogFileName = "";
+    var meta = $("log-file-meta"); if (meta) meta.classList.remove("show");
+    var fn = $("log-file-name"); if (fn) fn.textContent = "";
+    var fd = $("log-file-detail"); if (fd) fd.textContent = "";
+    var fi = $("log-file-input"); if (fi) fi.value = "";
+  }
+  $("sample-log-attack").addEventListener("click", function(){ clearLogFileState(); $("log-input").value = SAMPLE_LOG_ATTACK; });
+  $("sample-log-clean").addEventListener("click", function(){ clearLogFileState(); $("log-input").value = SAMPLE_LOG_CLEAN; });
+  document.querySelectorAll("[data-clear]").forEach(function(b){
+    if (b.getAttribute("data-clear") === "log-input") b.addEventListener("click", clearLogFileState);
+  });
+
+
+  /* ---------- IP analyzer ---------- */
+  function parseIPv4(s){
+    var m = s.trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!m) return null;
+    var o = [ +m[1], +m[2], +m[3], +m[4] ];
+    for (var i=0;i<4;i++) if (o[i] > 255) return null;
+    return o;
+  }
+  $("run-ip").addEventListener("click", function(){
+    var raw = $("ip-input").value.trim();
+    var o = parseIPv4(raw);
+    if (!o){ fail("That does not look like a valid IPv4 address. Use four numbers 0–255 separated by dots, e.g. 203.0.113.45."); return; }
+    var findings = [], detections = 0, iocHit = false;
+
+    if (IOC_IPS[raw]){
+      iocHit = true; detections = 47;
+      findings.push(finding("Exact match in local IOC list", "This IP is on the suite blocklist: <code>"+esc(IOC_IPS[raw])+"</code>. In a SOC this is treated as known-bad on sight — the count no longer matters.", "Malicious", "T1071", "Application Layer Protocol", "ip IN ioc_list.csv", "Block the IP at the firewall, check every host that connected to it, and open an incident."));
+    }
+    var testNet = (o[0]===192&&o[1]===0&&o[2]===2) || (o[0]===198&&o[1]===51&&o[2]===100) || (o[0]===203&&o[1]===0&&o[2]===113);
+    if (testNet && !iocHit){
+      detections = Math.max(detections, 6);
+      findings.push(finding("Reserved TEST-NET address seen as a destination", "This address sits in a documentation-only range (RFC 5737) that never appears in real traffic. Seeing it as a live destination means a lab simulation — or tooling with hard-coded placeholder C2 addresses.", "Suspicious", "T1095", "Non-Application Layer Protocol", "ip IN (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24)", "Confirm it came from your own lab VM. If not, trace the process that connected to it."));
+    }
+    var isPrivate = o[0]===10 || (o[0]===172&&o[1]>=16&&o[1]<=31) || (o[0]===192&&o[1]===168) || o[0]===127;
+    if (isPrivate){
+      findings.push(finding("Private / internal address", "RFC 1918 / loopback space. It cannot be routed on the public internet, so external reputation does not apply — judge it by internal logs instead.", "Clean", "", "", "ip IN private_ranges", "No external action. Correlate with internal DHCP / asset records if it appears in an alert."));
+    }
+    if (!isPrivate && !testNet && !iocHit){
+      findings.push(finding("Public address, no IOC match, no flags", "The address is publicly routable and appears in no local list. In a live SOC you would confirm this verdict on VirusTotal before closing it.", "Clean", "", "", "ip NOT IN ioc_list AND detections == 0", "Log and close. Re-check if the same IP appears in other alerts."));
+    }
+    var verdict = verdictFromDetections(detections, iocHit);
+    renderResult("IP analysis", raw, verdict, detections, findings, "Scoring: IOC match = Malicious at 47/70 · TEST-NET destination = 6/70 Suspicious · otherwise 0/70 Clean.");
+    logSession("IP", raw, verdict, detections, findings);
+  });
+
+  /* ---------- Domain / URL analyzer ---------- */
+  $("run-domain").addEventListener("click", function(){
+    var raw = $("domain-input").value.trim();
+    if (!raw){ fail("Paste a domain or URL first — or load one of the lab samples."); return; }
+    var findings = [], detections = 0, iocHit = false;
+    var host = raw, path = "", hasScheme = false;
+    try {
+      var u = new URL(raw.indexOf("://")>-1 ? raw : "http://"+raw);
+      host = u.hostname.toLowerCase(); path = (u.pathname + u.search).toLowerCase(); hasScheme = raw.indexOf("://")>-1;
+      var scheme = u.protocol.replace(":","");
+      var full = raw.toLowerCase();
+
+      if (IOC_DOMAINS[host]){
+        iocHit = true; detections = 52;
+        findings.push(finding("Exact match in local IOC list", "<code>"+esc(host)+"</code> is on the suite blocklist: "+esc(IOC_DOMAINS[host])+".", "Malicious", "T1071.001", "Web Protocols", "domain IN ioc_list.csv", "Block the domain at DNS/proxy, search logs for any host that resolved it, open an incident."));
+      }
+      PHISH_KEYWORDS.forEach(function(k){
+        if (full.indexOf(k) > -1){
+          detections += 5;
+          findings.push(finding("Phishing keyword in URL: “"+k+"”", "Legitimate brands rarely stack urgency words like <code>"+esc(k)+"</code> into a look-alike host or path. This is a classic credential-harvesting pattern.", "Suspicious", "T1566.002", "Phishing: Spearphishing Link", "url CONTAINS phishing_keyword", "Do not open it outside a sandbox. Check who received or clicked it."));
+        }
+      });
+      if (parseIPv4(host)){
+        detections += 6;
+        findings.push(finding("IP address used as the host", "Real services use domain names. A raw IP as host — especially with a payload-style path like <code>"+esc(path || "/")+"</code> — is typical of malware download servers.", "Suspicious", "T1105", "Ingress Tool Transfer", "host matches IPv4 pattern", "Check the downloading process and hash any file it fetched."));
+      }
+      if (host.indexOf("xn--") > -1){
+        detections += 5;
+        findings.push(finding("Punycode (homograph) domain", "<code>xn--</code> domains can visually imitate real brands using look-alike characters.", "Suspicious", "T1036", "Masquerading", "host CONTAINS 'xn--'", "Compare character-by-character with the real brand domain before trusting it."));
+      }
+      if (full.indexOf("@") > -1 && hasScheme){
+        detections += 6;
+        findings.push(finding("@ symbol inside the URL", "Everything before the <code>@</code> is ignored by browsers — a trick to make a malicious host look like a trusted one.", "Suspicious", "T1566.002", "Phishing: Spearphishing Link", "url CONTAINS '@'", "Treat as phishing until proven otherwise; warn anyone who received it."));
+      }
+      SHORTENERS.forEach(function(s){
+        if (host === s){ detections += 3; findings.push(finding("URL shortener hides the destination", "<code>"+esc(s)+"</code> conceals where the link really goes, so reputation cannot be judged from the link alone.", "Suspicious", "T1566.002", "Phishing: Spearphishing Link", "host IN shortener_list", "Expand the link in a sandbox or preview service before anyone clicks.")); }
+      });
+      if (scheme === "http" && (path.indexOf("login")>-1 || path.indexOf("signin")>-1 || host.indexOf("login")>-1)){
+        detections += 4;
+        findings.push(finding("Login page over plain HTTP", "Credentials submitted over <code>http</code> travel unencrypted — a strong sign of a fake or neglected login page.", "Suspicious", "T1566.002", "Phishing: Spearphishing Link", "scheme == http AND path CONTAINS login", "Never enter credentials. Verify the real site address from a trusted source."));
+      }
+      if (host.split(".").length >= 5){
+        detections += 3;
+        findings.push(finding("Deeply nested subdomains", "Long subdomain chains are used to bury the real registered domain at the end of the string.", "Suspicious", "T1566.002", "Phishing: Spearphishing Link", "count(subdomain labels) >= 4", "Read the host right-to-left: the last two labels are the real owner."));
+      }
+      if (raw.length > 90){
+        detections += 2;
+        findings.push(finding("Unusually long URL ("+raw.length+" characters)", "Length alone proves nothing, but phishing and payload URLs are routinely padded to hide their destination.", "Suspicious", "T1566.002", "Phishing: Spearphishing Link", "length(url) > 90", "Decode and inspect the full URL before use."));
+      }
+      if (findings.length === 0){
+        findings.push(finding("No IOC match and no pattern fired", "The domain is not on the local blocklist and the URL trips no phishing, masquerading or transfer pattern. Confirm on VirusTotal in a live SOC before fully trusting an unfamiliar domain.", "Clean", "", "", "detections == 0", "Log and close."));
+      }
+    } catch(e){
+      fail("Could not parse that as a domain or URL. Try a plain domain like evil-c2.example or a full URL starting with https://");
+      return;
+    }
+    detections = Math.min(detections, 68);
+    var verdict = verdictFromDetections(detections, iocHit);
+    renderResult("Domain / URL analysis", raw, verdict, detections, findings, "Scoring: each pattern that fires adds detections; 10+ = Malicious, 1–9 = Suspicious, IOC match = Malicious outright.");
+    logSession("Domain/URL", raw, verdict, detections, findings);
+  });
+
+  /* ---------- Hash analyzer ---------- */
+  $("run-hash").addEventListener("click", function(){
+    var raw = $("hash-input").value.trim().toLowerCase();
+    if (!/^[a-f0-9]{32}$/.test(raw) && !/^[a-f0-9]{64}$/.test(raw)){
+      fail("A hash must be exactly 32 hex characters (MD5) or 64 hex characters (SHA-256) — letters a–f and digits only."); return;
+    }
+    var type = raw.length === 32 ? "MD5" : "SHA-256";
+    var findings = [], detections = 0, iocHit = false;
+
+    if (IOC_HASHES[raw]){
+      var rec = IOC_HASHES[raw]; iocHit = true; detections = rec.detections;
+      var isEicar = rec.name.indexOf("EICAR") === 0;
+      findings.push(finding("Hash match: "+rec.name,
+        isEicar
+          ? "This is the EICAR anti-malware <em>test</em> string — a harmless industry-standard file that security tools deliberately flag, used in labs to prove hash matching and AV response work end-to-end. It is not real malware."
+          : "This "+type+" is in the local known-malware list. Any file with this exact hash is bit-for-bit identical to a known-bad sample.",
+        "Malicious", "T1204.002", "User Execution: Malicious File",
+        "sha256/md5 IN known_malware_hashes",
+        isEicar ? "Expected in a lab test — note it in the report as a controlled test and delete the file." : "Quarantine the file, do not execute it, find where it was downloaded from, and scan the host."));
+    } else if (KNOWN_CLEAN_HASHES[raw]){
+      findings.push(finding("Known clean hash", KNOWN_CLEAN_HASHES[raw]+". A hash of an empty file cannot carry a payload.", "Clean", "", "", "hash IN known_clean_hashes", "No action."));
+    } else {
+      findings.push(finding("No record in the local hash list", "This "+type+" matches no known-malware and no known-clean entry held locally. Local verdict is Clean at 0 detections — in a live SOC the next step is a VirusTotal hash lookup, which needs no file upload and is safe to run on any hash.", "Clean", "", "", "hash NOT IN any local list", "If the file came from an alert, pivot: check its parent process and download source before trusting it."));
+    }
+    var verdict = verdictFromDetections(detections, iocHit);
+    renderResult(type+" hash analysis", raw, verdict, detections, findings, "A hash identifies one exact file. Change one byte and the hash changes completely — which is why SOCs pair hash checks with process and behaviour rules.");
+    logSession("Hash ("+type+")", raw, verdict, detections, findings);
+  });
+
+  /* ---------- Log analyzer ---------- */
+  function parseTime(line){
+    var m = line.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (!m) return null;
+    return (+m[1])*3600 + (+m[2])*60 + (+(m[3]||0));
+  }
+  function analyzeCurrentLog(){
+    var text = $("log-input").value;
+    if (!text.trim()){ fail("Upload a .txt, .log or .csv log file, paste some log text, or load the “Full attack sequence” lab sample first."); return; }
+    var lines = text.split(/\r?\n/).filter(function(l){ return l.trim().length; });
+    var findings = [], detections = 0;
+
+    var failLines = lines.filter(function(l){ return /4625/.test(l) || /logon failure|failed logon|login failed/i.test(l); });
+    var okLines   = lines.filter(function(l){ return /4624/.test(l) || /successfully logged on/i.test(l); });
+    var privLines = lines.filter(function(l){ return /4672/.test(l); });
+    var groupLines= lines.filter(function(l){ return /4732/.test(l) || /localgroup\s+administrators.*\/add/i.test(l); });
+    var psLines   = lines.filter(function(l){ return /powershell/i.test(l) && /(encodedcommand|\s-enc\b|bypass|downloadstring|\biex\b|invoke-expression|frombase64string)/i.test(l); });
+    var procLines = lines.filter(function(l){ return /4688/.test(l) || /eventcode[:\s]*1\b/i.test(l) || /new process/i.test(l); });
+    var cmdLines  = lines.filter(function(l){ return /cmd\.exe/i.test(l) && /(whoami|net\s+user|ipconfig|net\s+localgroup)/i.test(l); });
+    var netLines  = lines.filter(function(l){ return /eventcode[:\s]*3\b/i.test(l) || /destinationip/i.test(l); });
+    var badPorts  = [];
+    netLines.forEach(function(l){ var m = l.match(/destinationport[:\s]*(\d+)/i); if (m && [4444,4443,1337,8080].indexOf(+m[1])>-1) badPorts.push(m[1]); });
+    var destIoc = lines.filter(function(l){ return /198\.51\.100\.99|203\.0\.113\.200/.test(l); });
+
+    /* Brute force: sliding 5-minute window when timestamps exist */
+    var times = failLines.map(parseTime).filter(function(t){ return t !== null; }).sort(function(a,b){ return a-b; });
+    var bruteWindow = false, worst = 0;
+    if (times.length >= 5){
+      for (var i=0;i<times.length;i++){ var c=0; for (var j=i;j<times.length;j++){ if (times[j]-times[i] <= 300) c++; } if (c>worst) worst=c; }
+      bruteWindow = worst >= 5;
+    }
+    var bruteCount = failLines.length >= 10;
+
+    if (failLines.length){
+      detections += Math.min(failLines.length, 8);
+      findings.push(finding("Failed logons detected — "+failLines.length+"× Event 4625",
+        "Each 4625 is one rejected logon. A handful can be typos; a run of them against one account is the raw material of a brute-force alert.",
+        failLines.length >= 5 ? "Suspicious" : "Clean", "T1110.001", "Brute Force: Password Guessing",
+        "count(EventCode=4625) >= 1, grouped by Account_Name + source IP",
+        "Identify the account and source. If the user does not recognise the attempts, treat it as an attack in progress."));
+    }
+    if (bruteWindow || bruteCount){
+      detections += 14;
+      findings.push(finding(bruteWindow ? "Brute-force pattern: "+worst+" failures inside 5 minutes" : "Brute-force pattern: "+failLines.length+" total failed logons",
+        bruteWindow
+          ? "Timestamps prove speed, not just volume — failures this dense are automated guessing, not a forgetful user."
+          : "No usable timestamps were present, so the count-based fallback rule fired (10+ failures in one log extract).",
+        "Malicious", "T1110.001", "Brute Force: Password Guessing",
+        bruteWindow ? "count(4625) >= 5 within any 5-minute window" : "count(4625) >= 10 (no timestamps in extract)",
+        "Lock or throttle the targeted account, block the source in the lab firewall, and check for a success immediately after."));
+    }
+    if (failLines.length >= 3 && okLines.length >= 1){
+      detections += 12;
+      findings.push(finding("Successful logon after multiple failures (4624 follows 4625s)",
+        "This is the single most important sequence in the log: the guessing may have worked. Until proven to be a lab test, treat the account as compromised.",
+        "Malicious", "T1078", "Valid Accounts",
+        "count(4625) >= 3 AND count(4624) >= 1 for the same account",
+        "Force a password reset, review everything the account did after that logon, and keep the incident open until explained."));
+    } else if (okLines.length){
+      findings.push(finding("Successful logons — "+okLines.length+"× Event 4624", "Normal sign-ins with no preceding failure burst in this extract.", "Clean", "", "", "count(EventCode=4624)", "No action unless the account or hour is unexpected."));
+    }
+    if (psLines.length){
+      detections += 13;
+      findings.push(finding("Suspicious PowerShell execution — "+psLines.length+" line(s)",
+        "PowerShell itself is a normal admin tool. The flags are what convict it: <code>-EncodedCommand</code> hides the real script, <code>-ExecutionPolicy Bypass</code> removes a safety control, and <code>DownloadString</code> / <code>IEX</code> run code fetched from the network.",
+        "Malicious", "T1059.001", "PowerShell",
+        "Image = powershell.exe AND CommandLine CONTAINS (EncodedCommand, Bypass, DownloadString, IEX)",
+        "Capture the full command line and the 4104 script-block log, identify the parent process, and check what it connected to."));
+    }
+    if (cmdLines.length){
+      detections += 6;
+      findings.push(finding("Command-shell recon commands", "<code>whoami</code>, <code>net user</code> and <code>ipconfig</code> from cmd.exe are the classic first commands run after a foothold — discovery before doing anything louder.",
+        "Suspicious", "T1059.003", "Windows Command Shell",
+        "Image = cmd.exe AND CommandLine CONTAINS (whoami, net user, ipconfig)",
+        "Check who ran them and what ran immediately before and after."));
+    }
+    if (procLines.length){
+      findings.push(finding("Process creation events — "+procLines.length+"× (4688 / Sysmon 1)",
+        "Process creation is the baseline of endpoint visibility: parent, image and full command line for everything that ran. Volume alone is not malicious — the findings above are what make a process suspicious.",
+        "Clean", "T1106", "Native API (execution telemetry)",
+        "EventCode IN (4688, Sysmon 1)",
+        "Use this as the investigation pivot: hash any unknown image and look up its reputation."));
+    }
+    if (badPorts.length){
+      detections += 9;
+      findings.push(finding("Connection to an unusual port: "+badPorts.join(", "),
+        "Normal browsing lives on 80/443. Ports like 4444 and 1337 are defaults for remote-access and C2 tooling, so a connection there needs an explanation.",
+        "Suspicious", "T1095", "Non-Application Layer Protocol",
+        "Sysmon EventCode=3 AND DestinationPort IN (4444, 4443, 1337, 8080)",
+        "Identify the connecting process, VirusTotal the destination IP, and block the port in the lab firewall."));
+    }
+    if (destIoc.length){
+      detections += 16;
+      findings.push(finding("Connection to an IOC-listed IP", "A destination in this log matches the suite IOC list exactly — the strongest single signal in this extract.",
+        "Malicious", "T1071", "Application Layer Protocol",
+        "DestinationIp IN ioc_list.csv",
+        "Isolate the host (in the lab: pause the VM), preserve the logs, and hunt for files created around the same timestamp."));
+    }
+    if (groupLines.length){
+      detections += 13;
+      findings.push(finding("Privilege escalation: user added to Administrators",
+        "Event 4732 (or the <code>net localgroup administrators … /add</code> command) grants full control of the machine. Outside a planned admin change, this is an incident on its own.",
+        "Malicious", "T1098", "Account Manipulation",
+        "EventCode = 4732 OR CommandLine CONTAINS 'localgroup administrators' AND '/add'",
+        "Remove the account from Administrators, find who ran the command, and revert the lab VM snapshot after documenting it."));
+    } else if (privLines.length){
+      detections += 5;
+      findings.push(finding("Special-privilege logon — "+privLines.length+"× Event 4672", "An administrator-equivalent logon. Expected for real admins; worth a finding when it follows a failure burst or lands at an odd hour.",
+        "Suspicious", "T1078", "Valid Accounts",
+        "EventCode = 4672",
+        "Confirm the admin expected to log on at this time."));
+    }
+
+    detections = Math.min(detections, 69);
+    var verdict = detections >= 10 ? "Malicious" : (detections >= 1 ? "Suspicious" : "Clean");
+    var lineCount = lines.length;
+    var logTarget = currentLogFileName ? ("Uploaded file: " + currentLogFileName) : "Windows log extract (pasted)";
+    var logTool = currentLogFileName ? ("Log file · " + lineCount + " lines") : ("Log (" + lineCount + " lines)");
+    renderResult("Log analysis · "+lineCount+" lines", logTarget, verdict, detections, findings,
+      currentLogFileName
+        ? "Source file: " + currentLogFileName + " — read locally in your browser only, never sent to a server. Every finding above names the Event ID or pattern that produced it."
+        : "Every finding above names the Event ID or pattern that produced it — re-run the same paste any time and you will get the identical result.");
+    logSession(logTool, logTarget, verdict, detections, findings);
+  }
+  $("run-log").addEventListener("click", analyzeCurrentLog);
+
+  /* ---------- Log file upload (local only) ---------- */
+  function handleLogFile(file){
+    if (!file) return;
+    var name = file.name || "log file";
+    if (!/\.(txt|log|csv)$/i.test(name)){
+      fail("That file type is not supported. Choose a .txt, .log or .csv log file — the file was not loaded.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024){
+      fail("That log file is over 10 MB. Export a smaller time range from Event Viewer and try again — the file was not loaded.");
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(){
+      var content = String(reader.result || "");
+      currentLogFileName = name;
+      $("log-input").value = content;
+      var count = content.split(/\r?\n/).filter(function(l){ return l.trim().length; }).length;
+      $("log-file-name").textContent = name;
+      $("log-file-detail").textContent = count + (count === 1 ? " line" : " lines") + " loaded · read locally in your browser only — now analyzing…";
+      $("log-file-meta").classList.add("show");
+      if (!content.trim()){
+        fail("The uploaded file “" + name + "” is empty, so there is nothing to analyze.");
+        return;
+      }
+      analyzeCurrentLog();
+      $("log-file-detail").textContent = count + (count === 1 ? " line" : " lines") + " loaded · read locally in your browser only · analysis complete — see the result panel.";
+    };
+    reader.onerror = function(){
+      fail("Could not read “" + name + "” in this browser. Try exporting the log again as .txt, .log or .csv.");
+    };
+    reader.readAsText(file);
+  }
+  var dz = $("log-dropzone"), fi = $("log-file-input");
+  $("log-file-btn").addEventListener("click", function(e){ e.stopPropagation(); fi.click(); });
+  dz.addEventListener("click", function(){ fi.click(); });
+  dz.addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); fi.click(); } });
+  fi.addEventListener("change", function(){ handleLogFile(fi.files && fi.files[0]); });
+  ["dragenter","dragover"].forEach(function(ev){
+    dz.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.add("dragover"); });
+  });
+  ["dragleave","drop"].forEach(function(ev){
+    dz.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.remove("dragover"); });
+  });
+  dz.addEventListener("drop", function(e){
+    var files = e.dataTransfer && e.dataTransfer.files;
+    handleLogFile(files && files[0]);
+  });
+
+  /* ---------- Report ---------- */
+  function maskedKey(){
+    var k = $("vt-key").value.trim();
+    if (!k) return "Not supplied (not required — analysis is local)";
+    return "Supplied by user, shown masked: " + k.slice(0,4) + "•••••••• (never stored, never transmitted by this page)";
+  }
+  $("download-report").addEventListener("click", function(){
+    var out = [];
+    out.push("================================================================");
+    out.push("  CYBER THREAT SUITE — THREAT ANALYSIS REPORT");
+    out.push("  Rule-based analysis only · No AI / ML · No model · No prediction");
+    out.push("================================================================");
+    out.push("Generated:        " + new Date().toLocaleString());
+    out.push("Analyses in report: " + session.length);
+    out.push("VirusTotal API key: " + maskedKey());
+    out.push("Method:           Local IOC list matching + fixed if-else thresholds");
+    out.push("                  (0 detections = Clean, 1-9 = Suspicious, 10+ / IOC");
+    out.push("                   match = Malicious). Detection counts are simulated");
+    out.push("                  in VirusTotal style for offline lab demonstration.");
+    out.push("");
+    if (!session.length){ out.push("No analyses were run in this session."); }
+    session.forEach(function(s, idx){
+      out.push("----------------------------------------------------------------");
+      out.push("FINDING " + (idx+1) + " — " + s.tool + " — " + s.time);
+      out.push("Indicator:  " + s.target);
+      out.push("Verdict:    " + s.verdict.toUpperCase() + "  (" + s.detections + " / 70 detections)");
+      out.push("");
+      if (!s.findings.length){ out.push("  - No rule fired. Indicator matched no IOC entry and no pattern."); }
+      s.findings.forEach(function(f){
+        out.push("  [" + f.severity + "] " + f.title);
+        out.push("      " + f.detail.replace(/<[^>]+>/g, ""));
+        if (f.mitreId) out.push("      MITRE ATT&CK: " + f.mitreId + " — " + f.mitreName);
+        if (f.rule) out.push("      Rule: " + f.rule);
+        if (f.response) out.push("      Recommended response: " + f.response);
+        out.push("");
+      });
+    });
+    out.push("----------------------------------------------------------------");
+    out.push("Analyst note: All indicators in the built-in IOC list are safe lab");
+    out.push("placeholders (RFC 5737 TEST-NET addresses and .example domains) and");
+    out.push("the EICAR test string. Any real-world verdict should be confirmed");
+    out.push("on VirusTotal and mapped in MITRE ATT&CK Navigator before action.");
+    out.push("================================================================");
+
+    var blob = new Blob([out.join("\n")], { type: "text/plain" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "cyber-threat-suite-report.txt";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 400);
+  });
+  $("clear-session").addEventListener("click", function(){ session = []; renderSession(); });
+
+  /* Enter key runs the single-line analyzers */
+  [["ip-input","run-ip"],["domain-input","run-domain"],["hash-input","run-hash"]].forEach(function(pair){
+    $(pair[0]).addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); $(pair[1]).click(); } });
+  });
+})();
+</script>
+</body>
+</html>
