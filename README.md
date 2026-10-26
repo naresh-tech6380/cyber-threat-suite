@@ -17,7 +17,23 @@ Every finding shows:
 
 Log rules include: failed logons (4625), brute force (5+ failures in 5 minutes), success after failures (4624), suspicious PowerShell (-EncodedCommand / Bypass / DownloadString / IEX), process creation (4688 / Sysmon 1), unusual ports, IOC destinations, and privilege escalation (4672 / 4732).
 
-## How to run
+## Python version (VS Code, no ML)
+
+`cyber_threat_suite.py` is the same analyzer in Python, using only the
+standard library. Run it in the VS Code terminal:
+
+```
+python cyber_threat_suite.py --demo
+python cyber_threat_suite.py --ip 198.51.100.99
+python cyber_threat_suite.py --hash 44d88612fea8a8f36de82e1278abb02
+python cyber_threat_suite.py --log samples/sample_attack.log
+python cyber_threat_suite.py --log mylog.txt --report report.txt
+```
+
+It analyzes IP, domain, URL, hash, and Windows log files with the same
+fixed rules and MITRE mapping as the web version. No AI/ML, no external packages.
+
+## How to run (web version)
 
 No server, no install, no API key needed for the built-in rule-based analysis:
 
