@@ -141,6 +141,21 @@
   .rule{font-size:12.5px;color:var(--faint);margin-top:6px}
   .result-foot{padding:12px 18px 16px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line)}
 
+  /* Final analysed report tables */
+  .report-tables{padding:4px 18px 18px;border-top:1px solid var(--line);background:var(--panel2)}
+  .report-tables .rt-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:14px 0 0}
+  .report-tables h3.rt-main{margin:4px 0 0;font-size:16px;letter-spacing:-.01em}
+  .report-tables .rt-sub{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+  .rt-block{margin-top:16px}
+  .rt-block h4{margin:0 0 7px;font-size:13px;font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .rt-block table{background:var(--panel);font-size:12.5px}
+  .rt-block th,.rt-block td{padding:8px 8px}
+  .rt-block td:first-child{font-weight:600}
+  .sess-reports{margin-top:18px}
+  .sess-reports:empty{display:none}
+  .sess-report-item{border-top:1px dashed var(--line);margin-top:16px;padding-top:4px}
+  .sess-report-item .report-tables{border:1px solid var(--line);border-radius:10px;margin-top:10px}
+
   /* Session / history */
   .sess-list{list-style:none;margin:0;padding:0}
   .sess-list li{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px}
@@ -323,6 +338,7 @@
         <div class="card-b">
           <div id="sess-empty" class="sess-empty">Nothing analyzed yet in this session.</div>
           <ul class="sess-list" id="sess-list"></ul>
+          <div class="sess-reports" id="sess-log-reports" aria-label="Final analysed log reports in tabular form"></div>
           <div class="actions" style="margin-top:16px">
             <button class="btn btn-primary" id="download-report" disabled>Download report (.txt)</button>
             <button class="btn btn-ghost" id="clear-session" disabled>Clear session</button>
@@ -471,8 +487,97 @@
     $("result-area").scrollIntoView({behavior:"smooth", block:"nearest"});
   }
 
-  function logSession(toolLabel, target, verdict, detections, findings){
-    session.push({ time: nowTime(), tool: toolLabel, target: target, verdict: verdict, detections: detections, findings: findings });
+  function stripTags(s){ return String(s || "").replace(/<[^>]+>/g, ""); }
+  function mitreDistFromRows(rows){
+    var map = {}, order = [];
+    (rows || []).forEach(function(r){
+      if (!r.mitreId) return;
+      if (!map[r.mitreId]){ map[r.mitreId] = { id: r.mitreId, name: r.mitreName || "", count: 0 }; order.push(r.mitreId); }
+      map[r.mitreId].count++;
+    });
+    return order.map(function(id){ return map[id]; });
+  }
+  function logReportHTML(rep, inSession){
+    if (!rep) return "";
+    var h = "";
+    h += '<div class="report-tables" aria-label="Final analysed report">';
+    h += '<p class="rt-kicker">Final analysed report — tabular</p>';
+    h += '<h3 class="rt-main">' + esc(rep.fileLabel) + '</h3>';
+    h += '<p class="rt-sub">Rule-based results only · No AI / ML · Tables update on every log analysis.</p>';
+    /* Summary table */
+    h += '<div class="rt-block"><h4>1 · Summary</h4><div class="scroll-x"><table><thead><tr>'
+      + '<th>Log File</th><th>Lines</th><th>Failed Logons</th><th>Brute Force</th><th>Success After Failures</th><th>Final Verdict</th>'
+      + '</tr></thead><tbody><tr>'
+      + '<td class="mono-cell">' + esc(rep.fileLabel) + '</td>'
+      + '<td>' + rep.lines + '</td>'
+      + '<td>' + rep.failedLogons + '</td>'
+      + '<td>' + (rep.bruteForce ? "Yes" : "No") + '</td>'
+      + '<td>' + (rep.successAfter ? "Yes" : "No") + '</td>'
+      + '<td><span class="pill v-' + rep.verdict.toLowerCase() + '">' + esc(rep.verdict) + '</span></td>'
+      + '</tr></tbody></table></div></div>';
+    /* Detailed findings table */
+    h += '<div class="rt-block"><h4>2 · Detailed findings</h4><div class="scroll-x"><table><thead><tr>'
+      + '<th>Finding</th><th>Verdict</th><th>MITRE ATT&amp;CK</th><th>Evidence</th><th>Recommended Response</th>'
+      + '</tr></thead><tbody>';
+    if (!rep.rows.length){
+      h += '<tr><td>No suspicious pattern found</td><td><span class="pill v-clean">Clean</span></td><td>—</td><td>No rule fired in this log.</td><td>No action needed.</td></tr>';
+    }
+    rep.rows.forEach(function(r){
+      h += '<tr><td>' + esc(r.name) + '</td>'
+        + '<td><span class="pill v-' + r.verdict.toLowerCase() + '">' + esc(r.verdict) + '</span></td>'
+        + '<td class="mono-cell">' + (r.mitreId ? esc(r.mitreId + (r.mitreName ? " " + r.mitreName : "")) : "—") + '</td>'
+        + '<td>' + esc(r.evidence) + '</td>'
+        + '<td>' + esc(r.response || "No action needed.") + '</td></tr>';
+    });
+    h += '</tbody></table></div></div>';
+    /* MITRE distribution table */
+    var dist = mitreDistFromRows(rep.rows);
+    h += '<div class="rt-block"><h4>3 · MITRE ATT&amp;CK distribution</h4><div class="scroll-x"><table><thead><tr>'
+      + '<th>MITRE Technique</th><th>Name</th><th>Count</th>'
+      + '</tr></thead><tbody>';
+    if (!dist.length){
+      h += '<tr><td class="mono-cell">—</td><td>No technique mapped</td><td>0</td></tr>';
+    }
+    dist.forEach(function(d){
+      h += '<tr><td class="mono-cell">' + esc(d.id) + '</td><td>' + esc(d.name) + '</td><td>' + d.count + '</td></tr>';
+    });
+    h += '</tbody></table></div></div>';
+    h += '</div>';
+    return h;
+  }
+  function buildLogReport(fileLabel, linesCount, failedCount, brute, successAfter, verdict, findings){
+    var reportFindings = findings.filter(function(f){
+      var t = f.title || "";
+      if (/Process creation events/.test(t)) return false;
+      if (/^Successful logons/.test(t)) return false;
+      if (brute && /Failed logons detected/.test(t)) return false;
+      return true;
+    });
+    var rows = reportFindings.map(function(f){
+      var ev = f.rule || "—";
+      var t = f.title || "";
+      if (/Failed logons detected/.test(t)) ev = failedCount + " × Event 4625 in this log";
+      else if (/Brute-force pattern/.test(t)) ev = failedCount + " × Event 4625 — threshold of 5+ failures in 5 minutes met";
+      else if (/Successful logon after/.test(t)) ev = failedCount + " × Event 4625 followed by a successful Event 4624 for the same account";
+      else if (/Successful logons/.test(t)) ev = "Successful Event 4624 logon(s) with no preceding failure burst";
+      else if (/Suspicious PowerShell/.test(t)) ev = "PowerShell line(s) matching EncodedCommand / Bypass / DownloadString / IEX";
+      else if (/Command-shell recon/.test(t)) ev = "cmd.exe line(s) matching whoami / net user / ipconfig";
+      else if (/Process creation/.test(t)) ev = "Event 4688 / Sysmon EventCode 1 process-creation lines";
+      else if (/unusual port/i.test(t)) ev = "Sysmon EventCode 3 connection to port " + (t.split(":").pop() || "").trim();
+      else if (/IOC-listed IP/.test(t)) ev = "Destination IP in this log matches the local IOC list exactly";
+      else if (/Privilege escalation/.test(t)) ev = "Event 4732 / net localgroup administrators … /add line in this log";
+      else if (/Special-privilege/.test(t)) ev = "Event 4672 special-privilege logon line(s)";
+      var name = stripTags(t).replace(/\s+—.*$/, function(m){ return m; });
+      return { name: name, verdict: f.severity || verdict, mitreId: f.mitreId || "", mitreName: f.mitreName || "", evidence: ev, response: f.response || "" };
+    });
+    if (verdict === "Clean"){
+      rows = [{ name: "No suspicious pattern found", verdict: "Clean", mitreId: "", mitreName: "", evidence: "No rule fired in " + linesCount + " lines", response: "No action needed." }];
+    }
+    return { fileLabel: fileLabel, lines: linesCount, failedLogons: failedCount, bruteForce: !!brute, successAfter: !!successAfter, verdict: verdict, rows: rows };
+  }
+
+  function logSession(toolLabel, target, verdict, detections, findings, logReport){
+    session.push({ time: nowTime(), tool: toolLabel, target: target, verdict: verdict, detections: detections, findings: findings, logReport: logReport || null });
     renderSession();
   }
   function renderSession(){
@@ -485,6 +590,17 @@
       li.innerHTML = '<span class="t">'+esc(s.time)+'</span><span class="what">'+esc(s.tool)+': '+esc(s.target)+'</span><span class="v"><span class="pill v-'+s.verdict.toLowerCase()+'">'+esc(s.verdict)+'</span></span>';
       list.appendChild(li);
     });
+    var repWrap = $("sess-log-reports");
+    if (repWrap){
+      repWrap.innerHTML = "";
+      session.slice().reverse().forEach(function(s){
+        if (!s.logReport) return;
+        var item = document.createElement("div");
+        item.className = "sess-report-item";
+        item.innerHTML = logReportHTML(s.logReport, true);
+        repWrap.appendChild(item);
+      });
+    }
   }
 
   function fail(msg){
@@ -778,7 +894,7 @@
     if (destIoc.length){
       detections += 16;
       findings.push(finding("Connection to an IOC-listed IP", "A destination in this log matches the suite IOC list exactly — the strongest single signal in this extract.",
-        "Malicious", "T1071", "Application Layer Protocol",
+        "Malicious", "T1071.001", "Web Protocols",
         "DestinationIp IN ioc_list.csv",
         "Isolate the host (in the lab: pause the VM), preserve the logs, and hunt for files created around the same timestamp."));
     }
@@ -800,13 +916,18 @@
     detections = Math.min(detections, 69);
     var verdict = detections >= 10 ? "Malicious" : (detections >= 1 ? "Suspicious" : "Clean");
     var lineCount = lines.length;
-    var logTarget = currentLogFileName ? ("Uploaded file: " + currentLogFileName) : "Windows log extract (pasted)";
+    var logTarget = currentLogFileName ? ("Uploaded file: " + currentLogFileName) : "Windows log extract (pasted / sample)";
+    var fileLabel = currentLogFileName ? currentLogFileName : "Pasted / sample log";
     var logTool = currentLogFileName ? ("Log file · " + lineCount + " lines") : ("Log (" + lineCount + " lines)");
+    var successAfterFailures = (failLines.length >= 3 && okLines.length >= 1);
+    var logReport = buildLogReport(fileLabel, lineCount, failLines.length, (bruteWindow || bruteCount), successAfterFailures, verdict, findings);
     renderResult("Log analysis · "+lineCount+" lines", logTarget, verdict, detections, findings,
       currentLogFileName
-        ? "Source file: " + currentLogFileName + " — read locally in your browser only, never sent to a server. Every finding above names the Event ID or pattern that produced it."
-        : "Every finding above names the Event ID or pattern that produced it — re-run the same paste any time and you will get the identical result.");
-    logSession(logTool, logTarget, verdict, detections, findings);
+        ? "Source file: " + currentLogFileName + " — read locally in your browser only, never sent to a server. The final analysed report tables follow directly below."
+        : "The final analysed report tables follow directly below — re-run the same paste or sample any time and you will get the identical result.");
+    /* Final analysed report — shown as tables on the page, right under the result */
+    $("result-area").insertAdjacentHTML("beforeend", logReportHTML(logReport, false));
+    logSession(logTool, logTarget, verdict, detections, findings, logReport);
   }
   $("run-log").addEventListener("click", analyzeCurrentLog);
 
@@ -865,10 +986,36 @@
     if (!k) return "Not supplied (not required — analysis is local)";
     return "Supplied by user, shown masked: " + k.slice(0,4) + "•••••••• (never stored, never transmitted by this page)";
   }
+  function wrapCell(text, w){
+    var words = String(text == null ? "" : text).split(/\s+/).filter(Boolean);
+    var lines = [], cur = "";
+    words.forEach(function(word){
+      if ((cur + " " + word).trim().length > w && cur){ lines.push(cur); cur = word; }
+      else { cur = (cur + " " + word).trim(); }
+    });
+    if (cur || !lines.length) lines.push(cur);
+    return lines;
+  }
+  function padCell(s, w){ s = String(s); while (s.length < w) s += " "; return s; }
+  function textTable(headers, rows, widths){
+    var out = [];
+    function renderRow(cells){
+      var wrapped = cells.map(function(c, i){ return wrapCell(c, widths[i]); });
+      var h = Math.max.apply(null, wrapped.map(function(x){ return x.length; }));
+      for (var i = 0; i < h; i++){
+        out.push("| " + wrapped.map(function(col, j){ return padCell(col[i] || "", widths[j]); }).join(" | ") + " |");
+      }
+    }
+    renderRow(headers);
+    out.push("|-" + widths.map(function(w){ return new Array(w + 1).join("-"); }).join("-|-") + "-|");
+    if (!rows.length) renderRow(widths.map(function(){ return "—"; }));
+    rows.forEach(renderRow);
+    return out;
+  }
   $("download-report").addEventListener("click", function(){
     var out = [];
     out.push("================================================================");
-    out.push("  CYBER THREAT SUITE — THREAT ANALYSIS REPORT");
+    out.push("  CYBER THREAT SUITE — FINAL ANALYSED REPORT (TABULAR)");
     out.push("  Rule-based analysis only · No AI / ML · No model · No prediction");
     out.push("================================================================");
     out.push("Generated:        " + new Date().toLocaleString());
@@ -882,19 +1029,46 @@
     if (!session.length){ out.push("No analyses were run in this session."); }
     session.forEach(function(s, idx){
       out.push("----------------------------------------------------------------");
-      out.push("FINDING " + (idx+1) + " — " + s.tool + " — " + s.time);
-      out.push("Indicator:  " + s.target);
-      out.push("Verdict:    " + s.verdict.toUpperCase() + "  (" + s.detections + " / 70 detections)");
+      out.push("ANALYSIS " + (idx+1) + " — " + s.tool + " — " + s.time + " — Verdict: " + s.verdict.toUpperCase() + " (" + s.detections + " / 70 detections)");
+      out.push("Indicator: " + s.target);
       out.push("");
-      if (!s.findings.length){ out.push("  - No rule fired. Indicator matched no IOC entry and no pattern."); }
-      s.findings.forEach(function(f){
-        out.push("  [" + f.severity + "] " + f.title);
-        out.push("      " + f.detail.replace(/<[^>]+>/g, ""));
-        if (f.mitreId) out.push("      MITRE ATT&CK: " + f.mitreId + " — " + f.mitreName);
-        if (f.rule) out.push("      Rule: " + f.rule);
-        if (f.response) out.push("      Recommended response: " + f.response);
+      if (s.logReport){
+        var rep = s.logReport;
+        out.push("TABLE 1 — SUMMARY");
+        out = out.concat(textTable(
+          ["Log File", "Lines", "Failed Logons", "Brute Force", "Success After Failures", "Final Verdict"],
+          [[rep.fileLabel, String(rep.lines), String(rep.failedLogons), rep.bruteForce ? "Yes" : "No", rep.successAfter ? "Yes" : "No", rep.verdict]],
+          [28, 7, 13, 11, 15, 13]
+        ));
         out.push("");
-      });
+        out.push("TABLE 2 — DETAILED FINDINGS");
+        out = out.concat(textTable(
+          ["Finding", "Verdict", "MITRE ATT&CK", "Evidence", "Recommended Response"],
+          rep.rows.map(function(r){ return [stripTags(r.name), r.verdict, r.mitreId ? (r.mitreId + " " + r.mitreName) : "—", r.evidence, r.response || "No action needed."]; }),
+          [38, 11, 24, 42, 42]
+        ));
+        out.push("");
+        out.push("TABLE 3 — MITRE ATT&CK DISTRIBUTION");
+        var dist = mitreDistFromRows(rep.rows);
+        out = out.concat(textTable(
+          ["MITRE Technique", "Name", "Count"],
+          dist.length ? dist.map(function(d){ return [d.id, d.name, String(d.count)]; }) : [["—", "No technique mapped", "0"]],
+          [18, 38, 7]
+        ));
+        out.push("");
+      } else {
+        out.push("TABLE — DETAILED FINDINGS");
+        var genericRows = (s.findings || []).map(function(f){
+          return [stripTags(f.title), f.severity, f.mitreId ? (f.mitreId + " " + f.mitreName) : "—", f.rule || stripTags(f.detail), f.response || "No action needed."];
+        });
+        if (!genericRows.length) genericRows = [["No rule fired", s.verdict, "—", "Indicator matched no IOC entry and no pattern.", "No action needed."]];
+        out = out.concat(textTable(
+          ["Finding", "Verdict", "MITRE ATT&CK", "Evidence", "Recommended Response"],
+          genericRows,
+          [38, 11, 24, 42, 42]
+        ));
+        out.push("");
+      }
     });
     out.push("----------------------------------------------------------------");
     out.push("Analyst note: All indicators in the built-in IOC list are safe lab");

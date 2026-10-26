@@ -26,7 +26,7 @@ standard library. Run it in the VS Code terminal:
 python cyber_threat_suite.py --demo
 python cyber_threat_suite.py --ip 198.51.100.99
 python cyber_threat_suite.py --hash 44d88612fea8a8f36de82e1278abb02
-python cyber_threat_suite.py --log samples/sample_attack.log
+python cyber_threat_suite.py --log samples/attack_log.txt
 python cyber_threat_suite.py --log mylog.txt --report report.txt
 ```
 
