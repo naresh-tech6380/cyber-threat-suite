@@ -1,0 +1,4 @@
+2026-10-26 12:00:00 4624 user=labtest ip=192.168.1.10 logon success
+2026-10-26 12:05:00 powershell -ExecutionPolicy Bypass -Command Write-Host lab-test user=labtest
+2026-10-26 12:06:00 powershell -EncodedCommand dGVzdA== user=labtest
+2026-10-26 12:07:00 powershell DownloadString http://example.com/test user=labtest

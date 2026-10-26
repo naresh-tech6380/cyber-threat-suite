@@ -1,0 +1,5 @@
+2026-10-26 09:00:00 4624 user=labtest ip=192.168.1.10 logon success
+2026-10-26 09:05:00 connection to example.com port 443 user=labtest
+2026-10-26 09:10:00 4624 user=labtest ip=192.168.1.10 logon success
+2026-10-26 09:15:00 file opened document.txt user=labtest
+2026-10-26 09:20:00 connection to example.com port 443 user=labtest
