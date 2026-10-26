@@ -22,7 +22,10 @@ Log rules include: failed logons (4625), brute force (5+ failures in 5 minutes),
 No server, no install, no API key needed for the built-in rule-based analysis:
 
 1. Open `index.html` in any browser, or
-2. Host it with GitHub Pages from this repo
+2. Host it with GitHub Pages from this repo, or
+3. Run it in VS Code — see [RUN_IN_VSCODE.md](RUN_IN_VSCODE.md):
+   clone the repo, open the folder in VS Code, install Live Server,
+   right-click `index.html` > Open with Live Server.
 
 Try the sample buttons first — they use safe lab data only (TEST-NET IPs, `.example` domains, the EICAR test hash, and sample log sequences).
 
